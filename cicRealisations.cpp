@@ -26,6 +26,7 @@ using namespace std;
 //    each stage, then add the output to our number (passed
 //    to the next stage!)
 //
+//  For DECIMATION:
 //  Memory is arranged (eg D=2, S=3):
 //  +---+---+---+---+---+---+---+---+---+
 //  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
@@ -33,7 +34,30 @@ using namespace std;
 //
 //   I1  I2  I3  |-----> |-----> |----->
 //                C1       C2      C3
+//
+//  Data flow
+//   --> --> --> --> --> --> --> --> -->
+//   IN                              OUT
 
+//  For INTERPOLATION:
+//  Memory is arranged (eg D=2, S=3):
+//  +---+---+---+---+---+---+---+---+---+
+//  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+//  +---+---+---+---+---+---+---+---+---+
+//
+//   I1  I2  I3 |-----> |-----> |----->
+//              C1       C2      C3
+//
+//
+//  Data Flow
+//               IN
+//               --> --> --> --> --> --+
+//                                     |
+//                                     V
+//   +------------------------- <-- <--+
+//   |
+//   +-> --> -->
+//           OUT
 ////////////////////////////////////////////////////
 // Interpolator Functionality
 ////////////////////////////////////////////////////
@@ -52,10 +76,50 @@ CICInterpolator::~CICInterpolator (void)
 void CICInterpolator::runFilter (uint64_t steps)
 //Actually run the CIC filter
 {
-    cout << steps << " steps for the interpolator \n";
-    cout << rCIC << " r for the interpolator \n";
-    cout << sCIC << " s for the interpolator \n";
-    cout << dCIC << " d for the interpolator \n";
+    //  Redundant definitions to improve ease of reading
+    //    (I assume the compiler will optimise them away!)
+    uint64_t nInteg = sCIC;
+    uint64_t nComb = sCIC;
+    int64_t combSwap;
+    int64_t combSum = 0; // The sum of each delay + input
+    uint64_t combInd = 0; // The index of the circular buffer currently being
+                          //   used as an input!
+    int64_t integInput;
+
+    for (uint64_t stepLow = 0; stepLow < steps; stepLow++)
+    {
+        //Comb section, low rate
+        combSum = i64Input[stepLow];
+        //Work our way through each comb, poping and swapping
+        for (uint64_t comb = 0; comb < nComb; comb++)
+        {
+            //Do the steps assoc with each comb
+            //This index gives the current comb output. Pop, then replace.
+            // This value is the current comb memory location
+            combSwap = i64Memory[sCIC + (dCIC * comb) + combInd];
+            i64Memory[sCIC + (dCIC * comb) + combInd] = combSum;
+            combSum = combSum - combSwap;
+        }
+        //Finished this iteration, rotate the circular buffers
+        combInd = combInd % dCIC;
+        integInput = combSum;
+
+        //Integrator section, high rate
+        for (uint64_t stepHigh = 0; stepHigh < rCIC; stepHigh++)
+        {
+            //  Preliminary steps: the first integ in the chain needs the data
+            //    value from the high rate stream!
+            i64Memory[0] = i64Memory[0] + integInput;
+
+            for (int64_t integ = nInteg - 1; integ >= 1; integ--)
+            {
+                //Do the steps assoc with each integrator
+                i64Memory[integ] = i64Memory[integ] + i64Memory[integ-1];
+            }
+            integInput = 0;
+            i64Output[stepLow*rCIC + stepHigh] = i64Memory[sCIC - 1];
+        }
+    }
 }
 
 ////////////////////////////////////////////////////
@@ -76,8 +140,6 @@ CICDecimator::~CICDecimator (void)
 void CICDecimator::runFilter (uint64_t steps)
 //Actually run the CIC filter
 {
-
-
     //  Redundant definitions to improve ease of reading
     //    (I assume the compiler will optimise them away!)
     uint64_t nInteg = sCIC;
@@ -94,10 +156,7 @@ void CICDecimator::runFilter (uint64_t steps)
         {
             //  Preliminary steps: the first integ in the chain needs the data
             //    value from the high rate stream!
-            cout << i64Memory[0] << "memstart \n";
-            cout << i64Input[stepLow*rCIC + stepHigh] << " input at " << stepLow*rCIC + stepHigh << "\n";
             i64Memory[0] = i64Input[stepLow*rCIC + stepHigh] + i64Memory[0];
-            cout << i64Memory[0] << "memend \n";
 
             for (int64_t integ = nInteg - 1; integ >= 1; integ--)
             {
@@ -106,22 +165,18 @@ void CICDecimator::runFilter (uint64_t steps)
             }
         }
 
-        cout << "\n";
         //Comb section, low rate
         combSum = i64Memory[sCIC - 1];
-        cout << combSum << "combSum start\n";
         for (uint64_t comb = 0; comb < nComb; comb++)
         {
             //Do the steps assoc with each comb
             //This index gives the current comb output. Pop, then replace.
-            combSwap = i64Memory[sCIC * (1 + comb) + combInd];
-            i64Memory[sCIC * (1 + comb) + combInd] = combSum;
+            combSwap = i64Memory[sCIC + (dCIC * comb) + combInd];
+            i64Memory[sCIC + (dCIC * comb) + combInd] = combSum;
             combSum = combSum - combSwap;
-            cout << combSum << "combSum end\n";
         }
         //Finished this iteration.
         i64Output[stepLow] = combSum;
         combInd = combInd % dCIC;
-        cout << "\n";
     }
 }

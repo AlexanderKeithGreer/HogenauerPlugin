@@ -88,39 +88,3 @@ class CICInterpolator():
         output = npct.as_array(output_ct)
         output = output.astype(np.int64)
         return output
-
-
-
-def test():
-    """ Basic testing function! """
-
-    #data = np.zeros(4096,dtype=np.int64)
-    #data += np.int64(10*np.sin(3*np.pi*np.arange(0, 2*np.pi, (2*np.pi/4096))))
-    #data += np.int64(10*np.sin(513*np.arange(0, 2*np.pi, (2*np.pi/4096))))
-    data = np.int64(np.round(64*ra.randn(4096)))
-    #data = np.int64(16*np.array([1,-1,1,-1,1,-1,1,-1]))
-
-    rate = 4096
-    deci = CICDecimator(rate,1,3)
-    interp = CICInterpolator(rate,1,1)
-    up = interp.run_filter(4096,data)
-    updown = deci.run_filter(4096, up)
-
-    plt.figure()
-    plt.plot(10*np.log10(1e-20+np.abs(nfft.fft(data[1:]/updown[:-1]))))
-    plt.figure()
-    plt.plot(np.arange(0,4096),data, label="data")
-    #plt.plot(np.arange(0,4096,1/rate), up, label="up")
-    plt.plot(np.arange(0,4096), updown*1e-9, label="updown")
-    plt.legend()
-    plt.figure()
-    plt.plot(10*np.log10(1e-10+np.abs(nfft.fft(up))), label="up")
-    plt.plot(10*np.log10(1e-10+np.abs(nfft.fft(data))), label="data")
-    plt.plot(10*np.log10(1e-10+np.abs(nfft.fft(updown*1e-10))), label="updown")
-    plt.legend()
-    plt.show()
-
-    while (True):
-        pass
-
-test()

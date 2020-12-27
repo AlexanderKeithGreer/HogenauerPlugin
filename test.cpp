@@ -19,18 +19,22 @@ void iterPrint(int64_t* data, uint64_t n)
 
 int main()
 {
-  int64_t p = 1024;
-  int64_t n = -1024;
+  int64_t p = 16;
+  int64_t n = -16;
 
-  //int64_t data0[20] = {1, 0, -1, 0, 1, 0, -1, 0, 1, 0, -1, 0, 1, 0, -1, 0, 1, 0, -1, 0};
-  int64_t data0[20] = {p, n, p, n, p, n, p, n, p, n, p, n, p, n, p, n, p, n, p, n};
-  //int64_t data0[20] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  int64_t out0[10] = {};
-  CICInterpolator InterpTest (4, 1, 1);
+  int64_t data0[10] = {p, n, p, n, p, n, p, n, p, n};
+  int64_t data1[4] = {p, n, p, n};
+  int64_t data2[4] = {p, p, -p, p};
+  int64_t data3[20] = {1, 0, -1, 0, 1, 0, -1, 0, 1, 0, -1, 0, 1, 0, -1, 0, 1, 0, -1, 0};
+  int64_t data4[20] = {1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1, 0, 1, 2, 1, 0};
+  int64_t out0[20] = {};
+  CICInterpolator InterpTest (3, 2, 2);
 
-  CICDecimator DeciTest (2, 2, 1);
-  DeciTest.i64InOutSet(data0, out0);
-  DeciTest.runFilter(10);
+  CICDecimator DeciTest (2, 1, 1);
+  //InterpTest.i64InOutSet(data2, out0);
+  //InterpTest.runFilter(4);
+  DeciTest.i64InOutSet(data4, out0);
+  DeciTest.runFilter(20);
   iterPrint(out0, 10);
 
   return 0;
